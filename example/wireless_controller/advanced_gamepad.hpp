@@ -8,6 +8,7 @@
 namespace unitree::common
 {
     // union for keys
+    // 定义遥控器键值和按钮之间的对应关系
     typedef union
     {
         struct
@@ -33,6 +34,7 @@ namespace unitree::common
     } xKeySwitchUnion;
 
     // single button class
+    // 按钮类，用于表示单个按钮的状态
     class Button
     {
     public:
@@ -46,11 +48,15 @@ namespace unitree::common
         }
 
         bool pressed = false;
+        // 表示该按钮当前是否处于按下状态
         bool on_press = false;
+        // 表示该按钮当前是否恰好处于按下状态
         bool on_release = false;
+        // 表示该按钮当前是否处于松开状态
     };
 
     // full gamepad
+    // 完整的遥控器类，用于表示遥控器的状态
     class Gamepad
     {
     public:
@@ -59,12 +65,15 @@ namespace unitree::common
         void Update(unitree_go::msg::dds_::WirelessController_ &key_msg)
         {
             // update stick values with smooth and deadzone
+            // 采用平滑和死区处理摇杆值
             lx = lx * (1 - smooth) + (std::fabs(key_msg.lx()) < dead_zone ? 0.0 : key_msg.lx()) * smooth;
             rx = rx * (1 - smooth) + (std::fabs(key_msg.rx()) < dead_zone ? 0.0 : key_msg.rx()) * smooth;
             ry = ry * (1 - smooth) + (std::fabs(key_msg.ry()) < dead_zone ? 0.0 : key_msg.ry()) * smooth;
             ly = ly * (1 - smooth) + (std::fabs(key_msg.ly()) < dead_zone ? 0.0 : key_msg.ly()) * smooth;
-
+            // 通过这种方式，摇杆值不会突然变化，而是根据 smooth 参数逐渐过渡到新的位置，同时小幅度的无意识移动会被忽略，因为它们处于 dead_zone 之内。这样的处理可以提高玩家对游戏的控制感，并减少不必要的微小抖动。
+,
             // update button states
+            // 更新按钮状态
             key.value = key_msg.keys();
 
             R1.update(key.components.R1);
@@ -86,12 +95,14 @@ namespace unitree::common
         }
 
         float smooth = 0.03;
+        // smooth：这是一个介于0到1之间的平滑因子，用来控制新旧摇杆值的混合程度。当 smooth 接近0时，摇杆值变化会比较突兀；当 smooth 接近1时，摇杆值变化会更加平滑。
         float dead_zone = 0.01;
+        // dead_zone：这是死区阈值，用于定义一个区间，在这个区间内摇杆被认为没有移动。如果摇杆的值在这个区间内，则将其视为0。
 
         float lx = 0.;
         float rx = 0.;
-        float ry = 0.;
         float ly = 0.;
+        float ry = 0.;
 
         Button R1;
         Button L1;

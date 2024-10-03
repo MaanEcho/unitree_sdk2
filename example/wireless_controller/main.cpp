@@ -18,35 +18,40 @@ public:
     GamepadExample() {}
 
     // setup dds model
-    void InitDdsModel(const std::string &networkInterface = "")
+    // 初始化 DDS 模型
+    void InitDdsModel(const std::string &networkInterface = "") // 阅读完成
     {
         ChannelFactory::Instance()->Init(0, networkInterface);
-        joystick_subscriber.reset(new ChannelSubscriber<unitree_go::msg::dds_::WirelessController_>(TOPIC_JOYSTICK));
 
+        joystick_subscriber.reset(new ChannelSubscriber<unitree_go::msg::dds_::WirelessController_>(TOPIC_JOYSTICK));
         joystick_subscriber->InitChannel(std::bind(&GamepadExample::MessageHandler, this, std::placeholders::_1), 1);
     }
 
     // set gamepad dead_zone parameter
-    void SetGamepadDeadZone(float deadzone)
+    // 设置遥控器的死区参数
+    void SetGamepadDeadZone(float deadzone) // 阅读完成
     {
         gamepad.dead_zone = deadzone;
     }
 
     // set gamepad smooth parameter
-    void setGamepadSmooth(float smooth)
+    // 设置遥控器的平滑参数
+    void setGamepadSmooth(float smooth) // 阅读完成
     {
         gamepad.smooth = smooth;
     }
 
     // callback function to save joystick message
-    void MessageHandler(const void *message)
+    // 回调函数，用于保存遥控器消息
+    void MessageHandler(const void *message) // 阅读完成
     {
-        std::lock_guard<std::mutex> lock(joystick_mutex);
+        std::lock_guard<std::mutex> lock(joystick_mutex); // 加锁，防止数据竞争
         joystick_msg = *(unitree_go::msg::dds_::WirelessController_ *)message;
     }
 
     // work thread
-    void Step()
+    // 工作线程
+    void Step() // 阅读完成
     {
         {
             std::lock_guard<std::mutex> lock(joystick_mutex);
@@ -64,12 +69,15 @@ public:
                   << "A: pressed: " << gamepad.A.pressed
                   << "; on_press: " << gamepad.A.on_press
                   << "; on_release: " << gamepad.A.on_release
-                  << std::endl << "press count: " << press_count
-                  << std::endl << "===========================" << std::endl;
+                  << std::endl
+                  << "press count: " << press_count
+                  << std::endl
+                  << "===========================" << std::endl;
     }
 
     // start the work thread
-    void Start()
+    // 启动工作线程
+    void Start() // 阅读完成
     {
         control_thread_ptr = CreateRecurrentThreadEx("nn_ctrl", UT_CPU_ID_NONE, 40000, &GamepadExample::Step, this);
     }
@@ -87,7 +95,7 @@ protected:
     int press_count = 0;
 };
 
-int main()
+int main() // 阅读完成
 {
     // create example object
     GamepadExample example;

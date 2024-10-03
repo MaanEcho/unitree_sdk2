@@ -18,20 +18,22 @@ using namespace unitree::robot;
 constexpr double PosStopF = (2.146E+9f);
 constexpr double VelStopF = (16000.0f);
 
-class Custom
+class Custom // 阅读完成
 {
 public:
     explicit Custom()
-    {}
+    {
+    }
 
     ~Custom()
-    {}
+    {
+    }
 
     void Init();
 
 private:
     void InitLowCmd();
-    void LowStateMessageHandler(const void* messages);
+    void LowStateMessageHandler(const void *messages);
     void LowCmdWrite();
 
 private:
@@ -43,11 +45,11 @@ private:
     double time_consume = 0;
     int rate_count = 0;
     int sin_count = 0;
-    int motiontime = 0;
-    float dt = 0.002; // 0.001~0.01
+    int motiontime = 0; // 底层控制指令的下发次数
+    float dt = 0.002;   // 0.001~0.01 控制步长
 
-    unitree_go::msg::dds_::LowCmd_ low_cmd{};      // default init
-    unitree_go::msg::dds_::LowState_ low_state{};  // default init
+    unitree_go::msg::dds_::LowCmd_ low_cmd{};     // default init
+    unitree_go::msg::dds_::LowState_ low_state{}; // default init
 
     /*publisher*/
     ChannelPublisherPtr<unitree_go::msg::dds_::LowCmd_> lowcmd_publisher;
@@ -58,7 +60,8 @@ private:
     ThreadPtr lowCmdWriteThreadPtr;
 };
 
-uint32_t crc32_core(uint32_t* ptr, uint32_t len)
+// Unitree 提供的电机校验函数
+uint32_t crc32_core(uint32_t *ptr, uint32_t len) // 阅读完成
 {
     unsigned int xbit = 0;
     unsigned int data = 0;
@@ -90,7 +93,8 @@ uint32_t crc32_core(uint32_t* ptr, uint32_t len)
     return CRC32;
 }
 
-void Custom::Init()
+// Init() 该函数用于初始化设置 publisher、subscriber、发布线程等。
+void Custom::Init() // 阅读完成
 {
     InitLowCmd();
 
@@ -106,30 +110,36 @@ void Custom::Init()
     lowCmdWriteThreadPtr = CreateRecurrentThreadEx("writebasiccmd", UT_CPU_ID_NONE, 2000, &Custom::LowCmdWrite, this);
 }
 
-void Custom::InitLowCmd()
+// InitLowCmd() 该函数用于初始化设置 LowCmd 类型的 low_cmd 结构体。该函数放置于 Custom 类的构造函数运行一次即可。
+void Custom::InitLowCmd() // 阅读完成
 {
+    // LowCmd 类型中的 head 成员表示帧头，此帧头将用于 CRC 校验。head、levelFlag、gpio 等按例程所示设置为默认值即可。
     low_cmd.head()[0] = 0xFE;
     low_cmd.head()[1] = 0xEF;
     low_cmd.level_flag() = 0xFF;
     low_cmd.gpio() = 0;
 
-    for(int i=0; i<20; i++)
+    // LowCmd 类型中有 20 个 motor_cmd 成员，每一个成员的命令用于控制 Go2 机器人上相对应的一个电机，但 Go2 机器人上只有 12 个电机，故仅有前 12 个有效，剩余的 8 个起保留作用。
+    for (int i = 0; i < 20; i++)
     {
-        low_cmd.motor_cmd()[i].mode() = (0x01);   // motor switch to servo (PMSM) mode
+        low_cmd.motor_cmd()[i].mode() = (0x01); // motor switch to servo (PMSM) mode
+        // 此行命令中将 motor_cmd 成员的 mode 变量设置为 0x01，0x01 表示将电机设置为伺服模式。如果用户在调试过程中发现无法控制 Go2 机器人的关节电机，请检查变量的值是否为0x01。
         low_cmd.motor_cmd()[i].q() = (PosStopF);
-        low_cmd.motor_cmd()[i].kp() = (0);
         low_cmd.motor_cmd()[i].dq() = (VelStopF);
+        low_cmd.motor_cmd()[i].kp() = (0);
         low_cmd.motor_cmd()[i].kd() = (0);
         low_cmd.motor_cmd()[i].tau() = (0);
     }
 }
 
-void Custom::LowStateMessageHandler(const void* message)
+// LowStateMessageHandler() 该函数用于处理 Go2 机器人上电机状态信息的回调函数。该函数的作用是将 Go2 机器人上电机状态信息保存至 low_state 结构体中。
+void Custom::LowStateMessageHandler(const void *message) // 阅读完成
 {
-    low_state = *(unitree_go::msg::dds_::LowState_*)message;
+    low_state = *(unitree_go::msg::dds_::LowState_ *)message;
 }
 
-double jointLinearInterpolation(double initPos, double targetPos, double rate)
+// 此函数用于计算两个关节角度的线性插值。
+double jointLinearInterpolation(double initPos, double targetPos, double rate) // 阅读完成
 {
     double p;
     rate = std::min(std::max(rate, 0.0), 1.0);
@@ -137,7 +147,8 @@ double jointLinearInterpolation(double initPos, double targetPos, double rate)
     return p;
 }
 
-void Custom::LowCmdWrite()
+// 此函数是发送底层控制指令的回调函数，DDS 会以一定频率触发该回调函数。此回调函数的前大部分代码表示计算右前小腿摆动控制命令的用户逻辑，后小部分代码将控制命令发送至 Go2 机器人。
+void Custom::LowCmdWrite() // 阅读完成
 {
     motiontime++;
 
@@ -156,8 +167,12 @@ void Custom::LowCmdWrite()
             rate_count++;
 
             double rate = rate_count / 200.0; // needs count to 200
-            Kp[0] = 5.0; Kp[1] = 5.0; Kp[2] = 5.0;
-            Kd[0] = 1.0; Kd[1] = 1.0; Kd[2] = 1.0;
+            Kp[0] = 5.0;
+            Kp[1] = 5.0;
+            Kp[2] = 5.0;
+            Kd[0] = 1.0;
+            Kd[1] = 1.0;
+            Kd[2] = 1.0;
 
             qDes[0] = jointLinearInterpolation(qInit[0], sin_mid_q[0], rate);
             qDes[1] = jointLinearInterpolation(qInit[1], sin_mid_q[1], rate);
@@ -188,17 +203,19 @@ void Custom::LowCmdWrite()
         low_cmd.motor_cmd()[2].tau() = 0;
     }
 
-    low_cmd.crc() = crc32_core((uint32_t *)&low_cmd, (sizeof(unitree_go::msg::dds_::LowCmd_)>>2)-1);
-    
+    low_cmd.crc() = crc32_core((uint32_t *)&low_cmd, (sizeof(unitree_go::msg::dds_::LowCmd_) >> 2) - 1);
+    // 计算 CRC 校验码。
     lowcmd_publisher->Write(low_cmd);
+    // 调用 lowcmd_publisher 的 Write() 函数将控制命令发送给 Go2 机器人。
 }
 
-int main(int argc, const char** argv)
+// 主函数
+int main(int argc, const char **argv) // 阅读完成
 {
     if (argc < 2)
     {
         std::cout << "Usage: " << argv[0] << " networkInterface" << std::endl;
-        exit(-1); 
+        exit(-1);
     }
 
     ChannelFactory::Instance()->Init(0, argv[1]);
